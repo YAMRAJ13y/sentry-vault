@@ -21,7 +21,22 @@ A working, live-demoed **immutable evidence vault** built with 15 AWS services. 
 
 The application deliberately holds full delete permissions - so when deletion fails, it proves the guarantee comes from **AWS storage internals, not from a missing permission**.
 
+## 📌 Status
+
+This project was **built, live-demonstrated, and torn down** (November 2026) as a Cloud Security & Forensics academic project. The full walkthrough below reproduces it on any AWS account in ~15 minutes.
+
+## 🖼️ Live demo screenshots
+
+| The vault app | Deleting evidence fails |
+|---|---|
+| ![Vault app](docs/screenshots/vault-app.png) | ![Delete blocked](docs/screenshots/delete-blocked.png) |
+
+| WAF blocks SQL injection | Real-time phone alerts |
+|---|---|
+| ![WAF blocked](docs/screenshots/waf-blocked.png) | ![Telegram alerts](docs/screenshots/telegram-alerts.png) |
+
 ## 🏗️ Architecture
+
 
 ![Architecture](docs/architecture.png)
 
