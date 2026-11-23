@@ -1,0 +1,16 @@
+# secrets & personal artifacts - never commit
+rootkey*.csv
+*.pem
+.env
+report/
+docs/screenshots/
+infra/app_b64.txt
+infra/webacl_current.json
+infra/webacl_update.json
+infra/webacl_rules.json
+infra/event_selectors.json
+infra/advanced_selectors.json
+infra/sentry-deploy.yaml
+infra/AUDIT_LOG_EXTRACT.txt
+__pycache__/
+*.pyc

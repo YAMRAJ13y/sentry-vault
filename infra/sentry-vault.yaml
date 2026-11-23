@@ -1,0 +1,337 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'SENTRY VAULT - Defense-in-Depth Secure Document Storage. EC2+Flask, S3 (KMS, Versioning, Object Lock), ALB+WAF, CloudTrail, GuardDuty, Config.'
+
+Resources:
+
+  # ============ NETWORKING (VPC) ============
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags: [{Key: Name, Value: sentry-vpc}]
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+  AttachIGW:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags: [{Key: Name, Value: sentry-public-a}]
+  PublicSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags: [{Key: Name, Value: sentry-public-b}]
+
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachIGW
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  SubnetAssocA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetA
+      RouteTableId: !Ref RouteTable
+  SubnetAssocB:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetB
+      RouteTableId: !Ref RouteTable
+
+  # ============ SECURITY GROUPS ============
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ALB - HTTP from internet (WAF filters attacks)
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: App server - HTTP only from ALB (no direct access, no SSH)
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+
+  # ============ STORAGE: S3 (Versioning + Object Lock) ============
+  VaultBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'sentry-vault-${AWS::AccountId}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      ObjectLockEnabled: true
+
+  TrailBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'sentry-trail-${AWS::AccountId}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+  TrailBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref TrailBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AWSCloudTrailAclCheck20150319
+            Effect: Allow
+            Principal: {Service: cloudtrail.amazonaws.com}
+            Action: s3:GetBucketAcl
+            Resource: !GetAtt TrailBucket.Arn
+          - Sid: AWSCloudTrailWrite20150319
+            Effect: Allow
+            Principal: {Service: cloudtrail.amazonaws.com}
+            Action: s3:PutObject
+            Resource: !Sub '${TrailBucket.Arn}/AWSLogs/${AWS::AccountId}/*'
+            Condition:
+              StringEquals:
+                s3:x-amz-acl: bucket-owner-full-control
+          - Sid: AWSConfigBucketPermissionsCheck
+            Effect: Allow
+            Principal: {Service: config.amazonaws.com}
+            Action: s3:GetBucketAcl
+            Resource: !GetAtt TrailBucket.Arn
+          - Sid: AWSConfigBucketDelivery
+            Effect: Allow
+            Principal: {Service: config.amazonaws.com}
+            Action: s3:PutObject
+            Resource: !Sub '${TrailBucket.Arn}/AWSLogs/${AWS::AccountId}/Config/*'
+            Condition:
+              StringEquals:
+                s3:x-amz-acl: bucket-owner-full-control
+
+  # ============ ENCRYPTION: KMS ============
+  VaultKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Sentry Vault evidence encryption key
+      EnableKeyRotation: true
+      KeyPolicy:
+        Statement:
+          - Sid: RootFullAccess
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: kms:*
+            Resource: '*'
+  VaultKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/sentry-vault
+      TargetKeyId: !Ref VaultKey
+
+  # ============ IAM (least privilege for EC2) ============
+  EC2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: sentry-vault-ec2-role
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: {Service: ec2.amazonaws.com}
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: sentry-vault-app-policy
+          PolicyDocument:
+            Statement:
+              - Sid: VaultBucketAccess
+                Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:ListBucketVersions
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:DeleteObjectVersion   # allowed, but Object Lock will still block - the demo!
+                Resource:
+                  - !GetAtt VaultBucket.Arn
+                  - !Sub '${VaultBucket.Arn}/*'
+              - Sid: KmsEncryptDecrypt
+                Effect: Allow
+                Action:
+                  - kms:GenerateDataKey
+                  - kms:Decrypt
+                  - kms:DescribeKey
+                Resource: !GetAtt VaultKey.Arn
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore   # Session Manager (no SSH needed)
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles: [!Ref EC2Role]
+
+  # ============ COMPUTE: EC2 + app ============
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: '{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}'
+      InstanceType: t3.micro
+      IamInstanceProfile: !Ref InstanceProfile
+      SecurityGroupIds: [!Ref EC2SecurityGroup]
+      SubnetId: !Ref PublicSubnetA
+      Tags:
+        - {Key: Name, Value: sentry-app-server}
+        - {Key: project, Value: sentry-vault}
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          dnf update -y
+          dnf install -y python3-pip
+          mkdir -p /opt/sentry
+          python3 -m venv /opt/sentry/venv
+          /opt/sentry/venv/bin/pip install --upgrade pip
+          /opt/sentry/venv/bin/pip install flask boto3
+          cat > /opt/sentry/app.py << 'PYEOF'
+          APP_CODE_PLACEHOLDER
+          PYEOF
+          cat > /etc/systemd/system/sentry.service << 'UNITEOF'
+          [Unit]
+          Description=Sentry Vault App
+          After=network.target
+
+          [Service]
+          Environment=VAULT_BUCKET=${VaultBucket}
+          Environment=AWS_REGION=ap-south-1
+          ExecStart=/opt/sentry/venv/bin/python /opt/sentry/app.py
+          WorkingDirectory=/opt/sentry
+          Restart=always
+
+          [Install]
+          WantedBy=multi-user.target
+          UNITEOF
+          systemctl daemon-reload
+          systemctl enable --now sentry
+
+  # ============ ALB (the only entrance) ============
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: sentry-tg
+      VpcId: !Ref VPC
+      Port: 80
+      Protocol: HTTP
+      TargetType: instance
+      Targets:
+        - Id: !Ref EC2Instance
+          Port: 80
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: /healthz
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 5
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: sentry-alb
+      Scheme: internet-facing
+      Type: application
+      Subnets: [!Ref PublicSubnetA, !Ref PublicSubnetB]
+      SecurityGroups: [!Ref ALBSecurityGroup]
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+  # ============ WAF (blocks SQLi / XSS) ============
+  WebACL:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Name: sentry-webacl
+      Scope: REGIONAL
+      DefaultAction:
+        Allow: {}
+      VisibilityConfig:
+        CloudWatchMetricsEnabled: true
+        MetricName: sentry-webacl
+        SampledRequestsEnabled: true
+      Rules:
+        - Name: AWS-CommonRuleSet
+          Priority: 1
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesCommonRuleSet
+              RuleActionOverrides:
+                - Name: SizeRestrictions_BODY   # allow evidence files > 8KB; rule still counts matches
+                  ActionToUse:
+                    Count: {}
+          OverrideAction:
+            None: {}
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: sentry-common
+            SampledRequestsEnabled: true
+        - Name: AWS-SQLiRuleSet
+          Priority: 2
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesSQLiRuleSet
+          OverrideAction:
+            None: {}
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: sentry-sqli
+            SampledRequestsEnabled: true
+  WebACLAssociation:
+    Type: AWS::WAFv2::WebACLAssociation
+    Properties:
+      ResourceArn: !GetAtt LoadBalancer.LoadBalancerArn
+      WebACLArn: !GetAtt WebACL.Arn
+
+  # CloudTrail + Config recorder/rule are configured via CLI after deploy
+  # (CloudTrail's new bucket-policy validation + Config rule quirks make CLI safer - no rollback risk)
+  # GuardDuty is enabled via CLI/console after deploy (needs one-time subscription on this account)
+
+Outputs:
+  WebsiteURL:
+    Description: Sentry Vault app URL (through ALB + WAF)
+    Value: !Sub 'http://${LoadBalancer.DNSName}'
+  VaultBucketName:
+    Value: !Ref VaultBucket
+  KMSKeyAlias:
+    Value: alias/sentry-vault
+  GuardDutyConsole:
+    Value: 'https://ap-south-1.console.aws.amazon.com/guardduty/home?region=ap-south-1'
