@@ -1,4 +1,8 @@
-# 🛡️ SENTRY VAULT
+<p align="center">
+  <img src="assets/logo.png" alt="SENTRY VAULT" width="240">
+</p>
+
+# <p align="center">🛡️ SENTRY VAULT</p>
 
 > **Defense-in-Depth Secure Document Storage on AWS**
 > Upload evidence. AWS encrypts it, freezes it, and refuses to let anyone - even the administrator - destroy it. Every action is audited, and your phone gets alerted in real time.
