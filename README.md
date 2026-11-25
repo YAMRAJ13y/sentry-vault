@@ -76,7 +76,84 @@ sentry-vault/
 └── README.md
 ```
 
-## 🚀 Deploy it yourself
+## ⚙️ Setup (Windows / Linux / macOS)
+
+Everything runs from a terminal. On Windows, use **Git Bash** (installed automatically with Git) or WSL - the same commands work everywhere.
+
+### Step 0 - Prerequisites
+
+| Requirement | Windows | Linux | macOS |
+|---|---|---|---|
+| AWS CLI v2 | `winget install Amazon.AWSCLI` | [Install guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) | `brew install awscli` |
+| Python 3.10+ | `winget install Python.Python.3.12` | usually preinstalled | preinstalled/brew |
+| Git (+ Git Bash on Windows) | `winget install Git.Git` | `apt install git` | `brew install git` |
+| An AWS account | [Free Tier](https://aws.amazon.com/free/) - the project fits inside it | | |
+| Optional: Telegram bot token | Message [@BotFather](https://t.me/BotFather) `/newbot`, then message your bot once | | |
+
+### Step 1 - Configure AWS credentials
+
+```bash
+aws configure --profile sentry
+# Access Key ID / Secret Access Key from the IAM console
+# Default region: ap-south-1 (Mumbai)
+export AWS_PROFILE=sentry        # Git Bash / Linux / macOS
+setx AWS_PROFILE sentry          # Windows PowerShell (new terminals)
+aws sts get-caller-identity      # should print your account
+```
+
+### Step 2 - Clone and build the deployment template
+
+```bash
+git clone https://github.com/YAMRAJ13y/sentry-vault-aws.git
+cd sentry-vault-aws
+python infra/build_and_deploy.py    # injects the Flask app into EC2 userdata
+```
+
+### Step 3 - Deploy the core stack (~10 minutes)
+
+```bash
+aws cloudformation deploy   --profile sentry   --template-file infra/sentry-deploy.yaml   --stack-name sentry-vault   --capabilities CAPABILITY_NAMED_IAM
+```
+
+This creates: VPC + subnets, EC2 + Flask app, S3 vault bucket (Versioning + Object Lock), KMS key, least-privilege IAM role, ALB, WAF (managed SQLi/XSS rules), CloudTrail bucket, Config role/recorder/delivery, SSM. The **WebsiteURL** appears in the stack Outputs.
+
+### Step 4 - One-shot post-deploy (all platforms)
+
+```bash
+bash infra/post_deploy.sh your-email@example.com
+```
+
+This enables: S3 Object Lock retention, CloudTrail (with data events), the Config compliance rule, and the $1 budget alarm. To include the Telegram bot, add your credentials as environment variables:
+
+```bash
+export TELEGRAM_BOT_TOKEN="123456:ABC-your-token"
+export TELEGRAM_CHAT_ID="your-chat-id"
+bash infra/post_deploy.sh your-email@example.com
+```
+
+That configures the Lambda function, the secured webhook, S3 upload alerts, and wires everything together.
+
+### Step 5 - Verify
+
+1. Open `WebsiteURL` from the stack Outputs - the dashboard loads
+2. Upload a file - green banner, object shows `SSE-KMS` in the S3 console
+3. Click **Delete** - red banner: *DELETE BLOCKED by object lock*
+4. Visit `WebsiteURL/?id=admin'--` - `403 Forbidden` (WAF blocked SQLi)
+5. Telegram: `/status` - the bot lists every active layer
+
+### Step 6 - Teardown when finished (important - ALB/WAF bill hourly)
+
+```bash
+# empty the vault bucket first (Object Lock holds versions for 1 day - use root/admin + bypass)
+# then:
+aws cloudformation delete-stack --profile sentry --stack-name sentry-vault
+aws cloudtrail delete-trail --profile sentry --name sentry-trail
+aws lambda delete-function --profile sentry --function-name sentry-telegram-bot 2>/dev/null
+```
+
+Full click-by-click walkthrough with expected outputs: [docs/deployment-guide.md](docs/deployment-guide.md)
+
+## 🧪 Reproduce the live demo
 
 **Prerequisites:** an AWS account, AWS CLI v2 configured (`aws configure`), and [Telegram BotFather](https://t.me/BotFather) bot token.
 
