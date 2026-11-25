@@ -67,6 +67,9 @@ aws $P cloudtrail create-trail --name sentry-trail --s3-bucket-name "$TRAILBUCKE
   && echo "OK trail"
 aws $P cloudtrail start-logging --name sentry-trail && echo "OK logging"
 
+echo "== 3b. CloudTrail data events (object-level forensic logs) =="
+aws $P cloudtrail put-event-selectors --trail-name sentry-trail --advanced-event-selectors   '[{"Name":"all-management","FieldSelectors":[{"Field":"eventCategory","Equals":["Management"]}]},{"Name":"s3-object-data","FieldSelectors":[{"Field":"eventCategory","Equals":["Data"]},{"Field":"resources.type","Equals":["AWS::S3::Object"]}]}]'   && echo "OK data events"
+
 echo "== 4. AWS Config (role, recorder, delivery, rule) =="
 aws $P iam create-role --role-name sentry-config-role \
   --assume-role-policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"config.amazonaws.com"},"Action":"sts:AssumeRole"}]}' >/dev/null 2>&1

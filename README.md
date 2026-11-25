@@ -67,6 +67,7 @@ sentry-vault/
 ├── docs/
 │   ├── architecture.png     # Defense-in-depth architecture diagram
 │   ├── deployment-guide.md  # Step-by-step deployment walkthrough
+│   ├── screenshots/          # Real screenshots from the live demo
 │   └── security-faq.md      # Viva/interview Q&A on every design decision
 ├── infra/
 │   ├── sentry-vault.yaml    # Full CloudFormation template (all resources)
@@ -113,6 +114,10 @@ python infra/build_and_deploy.py    # injects the Flask app into EC2 userdata
 
 ```bash
 aws cloudformation deploy   --profile sentry   --template-file infra/sentry-deploy.yaml   --stack-name sentry-vault   --capabilities CAPABILITY_NAMED_IAM
+
+# optional: real-time tamper/upload alerts from the app itself
+# (requires a Telegram bot token + chat id - see Step 4)
+# add:  --parameter-overrides TelegramToken="123:abc" TelegramChatId="456"
 ```
 
 This creates: VPC + subnets, EC2 + Flask app, S3 vault bucket (Versioning + Object Lock), KMS key, least-privilege IAM role, ALB, WAF (managed SQLi/XSS rules), CloudTrail bucket, Config role/recorder/delivery, SSM. The **WebsiteURL** appears in the stack Outputs.

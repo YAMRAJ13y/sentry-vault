@@ -1,5 +1,15 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'SENTRY VAULT - Defense-in-Depth Secure Document Storage. EC2+Flask, S3 (KMS, Versioning, Object Lock), ALB+WAF, CloudTrail, GuardDuty, Config.'
+Parameters:
+  TelegramToken:
+    Type: String
+    Default: ''
+    Description: 'Optional Telegram bot token - enables real-time tamper/upload alerts from the app'
+    NoEcho: true
+  TelegramChatId:
+    Type: String
+    Default: ''
+    Description: 'Optional Telegram chat ID that receives the alerts'
 
 Resources:
 
@@ -229,6 +239,8 @@ Resources:
 
           [Service]
           Environment=VAULT_BUCKET=${VaultBucket}
+          Environment=TELEGRAM_TOKEN=${TelegramToken}
+          Environment=TELEGRAM_CHAT_ID=${TelegramChatId}
           Environment=AWS_REGION=ap-south-1
           ExecStart=/opt/sentry/venv/bin/python /opt/sentry/app.py
           WorkingDirectory=/opt/sentry
