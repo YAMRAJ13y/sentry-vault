@@ -73,19 +73,19 @@ A web application backed by **15 AWS services** arranged as a defense-in-depth s
 
 **The application** — every file stored is encrypted and locked:
 
-![SENTRY VAULT web application](img-app.png)
+![SENTRY VAULT web application](assets/img-app.png)
 
 **Deleting evidence is refused by AWS itself** — even though the application has full delete permissions in its IAM policy:
 
-![Delete blocked by Object Lock](img-delete.png)
+![Delete blocked by Object Lock](assets/img-delete.png)
 
 **Attacking the application** — a real SQL injection payload is blocked at the edge:
 
-![WAF blocks SQL injection](img-waf.png)
+![WAF blocks SQL injection](assets/img-waf.png)
 
 **Real-time alerts to the owner's phone:**
 
-![Telegram alerts](img-telegram.png)
+![Telegram alerts](assets/img-telegram.png)
 
 ## 🔒 Security Layers — Each One Proven Live
 
