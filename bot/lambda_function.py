@@ -72,23 +72,23 @@ def handler(event, context):
              "🛡 <b>SENTRY VAULT BOT</b>\n"
              "Defense-in-Depth Document Vault on AWS\n\n"
              "Commands:\n"
-             "/status — security layers status\n"
-             "/files — files stored in the vault\n"
-             "/events — recent CloudTrail audit events\n"
-             "/health — web app health check\n\n"
+             "/status - security layers status\n"
+             "/files - files stored in the vault\n"
+             "/events - recent CloudTrail audit events\n"
+             "/health - web app health check\n\n"
              "🔔 This bot also alerts automatically on new uploads and tamper attempts.")
     elif cmd == "/status":
         send(chat,
-             "🛡 <b>SENTRY VAULT — ALL LAYERS ACTIVE</b>\n"
-             "✅ WAF — blocking SQLi / XSS at the edge\n"
-             "✅ ALB — single controlled entrance\n"
-             "✅ VPC — network isolation\n"
-             "✅ IAM — least privilege role\n"
-             "✅ KMS — SSE-KMS encryption\n"
-             "✅ Object Lock — WORM (GOVERNANCE, 1 day)\n"
-             "✅ CloudTrail — full API audit\n"
-             "✅ AWS Config — compliance monitoring\n"
-             "✅ Session Manager — shell without SSH")
+             "🛡 <b>SENTRY VAULT - ALL LAYERS ACTIVE</b>\n"
+             "✅ WAF - blocking SQLi / XSS at the edge\n"
+             "✅ ALB - single controlled entrance\n"
+             "✅ VPC - network isolation\n"
+             "✅ IAM - least privilege role\n"
+             "✅ KMS - SSE-KMS encryption\n"
+             "✅ Object Lock - WORM (GOVERNANCE, 1 day)\n"
+             "✅ CloudTrail - full API audit\n"
+             "✅ AWS Config - compliance monitoring\n"
+             "✅ Session Manager - shell without SSH")
     elif cmd == "/files":
         try:
             resp = s3.list_objects_v2(Bucket=BUCKET)
@@ -96,7 +96,7 @@ def handler(event, context):
             if not objs:
                 send(chat, "📁 Vault is empty.")
             else:
-                lines = [f"• {o['Key']} — {o['Size']} B" for o in objs[:10]]
+                lines = [f"• {o['Key']} - {o['Size']} B" for o in objs[:10]]
                 send(chat, "📁 <b>Files in vault:</b>\n" + "\n".join(lines))
         except Exception as e:
             send(chat, f"⚠️ Could not list vault: {e}")
@@ -104,17 +104,17 @@ def handler(event, context):
         try:
             ct = boto3.client("cloudtrail")
             evs = ct.lookup_events(MaxResults=6).get("Events", [])
-            lines = [f"• {e['EventName']} — {e['Username']}" for e in evs]
+            lines = [f"• {e['EventName']} - {e['Username']}" for e in evs]
             send(chat, "📜 <b>Recent audit events:</b>\n" + "\n".join(lines) if lines else "No events found.")
         except Exception as e:
             send(chat, f"⚠️ Could not query CloudTrail: {e}")
     elif cmd == "/health":
         try:
             r = urllib.request.urlopen(APP_URL + "/healthz", timeout=8)
-            send(chat, f"✅ Web app healthy — HTTP {r.status}")
+            send(chat, f"✅ Web app healthy - HTTP {r.status}")
         except Exception as e:
             send(chat, f"⚠️ App check failed: {e}")
     else:
-        send(chat, "Unknown command — try /help")
+        send(chat, "Unknown command - try /help")
 
     return {"statusCode": 200}

@@ -360,7 +360,7 @@ def delete(name):
         telegram_alert(
             f"🚨 <b>TAMPER ATTEMPT BLOCKED</b>\n"
             f"File: <code>{name}</code>\n"
-            f"AWS error: {code} — {aws_msg}\n"
+            f"AWS error: {code} - {aws_msg}\n"
             f"🛡 S3 Object Lock (WORM) refused the deletion. Evidence intact.\n"
             f"⏰ {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC")
         return redirect(url_for("index", msg=msg, t="err"))

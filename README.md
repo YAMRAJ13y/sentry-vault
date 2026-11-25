@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>Defense-in-Depth Secure Document Storage on AWS</b><br>
-  <i>Upload evidence. AWS encrypts it, freezes it, and refuses to let anyone — even the administrator — destroy it.</i>
+  <i>Upload evidence. AWS encrypts it, freezes it, and refuses to let anyone - even the administrator - destroy it.</i>
 </p>
 
 <p align="center">
@@ -23,21 +23,21 @@
 
 ## 🚨 The Case: Why This Project Exists
 
-Digital evidence held by **government agencies and law enforcement** faces a brutal reality. Consider a cyber-crime unit that seizes a phone and extracts evidence photos. Between seizure and trial — which can take **years** — that evidence is exposed to:
+Digital evidence held by **government agencies and law enforcement** faces a brutal reality. Consider a cyber-crime unit that seizes a phone and extracts evidence photos. Between seizure and trial - which can take **years** - that evidence is exposed to:
 
 | Real-world threat | Consequence |
 |---|---|
-| 🦠 **Ransomware** | Modern ransomware deletes backups *first*, then encrypts everything — recovery becomes impossible |
+| 🦠 **Ransomware** | Modern ransomware deletes backups *first*, then encrypts everything - recovery becomes impossible |
 | 🕵️ **Hackers** | Attackers breach storage servers and destroy or alter evidence to collapse the case |
-| 👤 **Insider threat** | A single corrupt administrator quietly deletes one photo — an innocent person is framed |
-| ⚖️ **Court challenge** | "Could anyone have modified this evidence?" — if you can't prove it technically, the evidence loses value |
+| 👤 **Insider threat** | A single corrupt administrator quietly deletes one photo - an innocent person is framed |
+| ⚖️ **Court challenge** | "Could anyone have modified this evidence?" - if you can't prove it technically, the evidence loses value |
 | 🤦 **Accidents** | One wrong command wipes years of investigation |
 
 **Traditional storage cannot answer the court's one decisive question:**
 
 > *"Can you prove, technically, that nobody could have altered or removed this evidence?"*
 
-**SENTRY VAULT is the answer: YES — architecturally.** Once a file enters the vault, destruction becomes impossible — not by a hacker, not by malware, not even by the administrator — and every single interaction is permanently recorded. The same pattern protects hospital records, bank audit logs, legal contracts, and enterprise ransomware-proof backups (S3 Object Lock is exactly the feature enterprise backup products use).
+**SENTRY VAULT is the answer: YES - architecturally.** Once a file enters the vault, destruction becomes impossible - not by a hacker, not by malware, not even by the administrator - and every single interaction is permanently recorded. The same pattern protects hospital records, bank audit logs, legal contracts, and enterprise ransomware-proof backups (S3 Object Lock is exactly the feature enterprise backup products use).
 
 ## 🖥️ The System
 
@@ -71,15 +71,15 @@ A web application backed by **15 AWS services** arranged as a defense-in-depth s
 
 ## 🖼️ Live Demo Proof
 
-**The application** — every file stored is encrypted and locked:
+**The application** - every file stored is encrypted and locked:
 
 ![SENTRY VAULT web application](assets/img-app.png)
 
-**Deleting evidence is refused by AWS itself** — even though the application has full delete permissions in its IAM policy:
+**Deleting evidence is refused by AWS itself** - even though the application has full delete permissions in its IAM policy:
 
 ![Delete blocked by Object Lock](assets/img-delete.png)
 
-**Attacking the application** — a real SQL injection payload is blocked at the edge:
+**Attacking the application** - a real SQL injection payload is blocked at the edge:
 
 ![WAF blocks SQL injection](assets/img-waf.png)
 
@@ -87,7 +87,7 @@ A web application backed by **15 AWS services** arranged as a defense-in-depth s
 
 ![Telegram alerts](assets/img-telegram.png)
 
-## 🔒 Security Layers — Each One Proven Live
+## 🔒 Security Layers - Each One Proven Live
 
 | # | Layer | Service | Live proof from the demo |
 |---|---|---|---|
@@ -126,21 +126,21 @@ A web application backed by **15 AWS services** arranged as a defense-in-depth s
 
 ## ⚙️ Setup (Windows / Linux / macOS)
 
-Everything runs from a terminal. On **Windows**, use **Git Bash** (installed automatically with Git) or WSL — the same commands work everywhere.
+Everything runs from a terminal. On **Windows**, use **Git Bash** (installed automatically with Git) or WSL - the same commands work everywhere.
 
-### Step 0 — Prerequisites
+### Step 0 - Prerequisites
 
 | Requirement | Windows | Linux | macOS |
 |---|---|---|---|
 | AWS CLI v2 | `winget install Amazon.AWSCLI` | [Install guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) | `brew install awscli` |
 | Python 3.10+ | `winget install Python.Python.3.12` | usually preinstalled | preinstalled / `brew install python` |
 | Git (+ Git Bash on Windows) | `winget install Git.Git` | `apt install git` | `brew install git` |
-| AWS account | [Free Tier](https://aws.amazon.com/free/) — the project fits inside it | | |
+| AWS account | [Free Tier](https://aws.amazon.com/free/) - the project fits inside it | | |
 | Optional: Telegram bot token | Message [@BotFather](https://t.me/BotFather) `/newbot`, then message your bot once | | |
 
 > 💡 All commands below also work with an **AWS named profile**: add `--profile <name>` or `export AWS_PROFILE=<name>`.
 
-### Step 1 — Configure AWS credentials
+### Step 1 - Configure AWS credentials
 
 ```bash
 aws configure --profile sentry
@@ -156,7 +156,7 @@ export AWS_PROFILE=sentry          # Git Bash / Linux / macOS
 aws sts get-caller-identity        # should print your account ARN
 ```
 
-### Step 2 — Clone and build the deployment template
+### Step 2 - Clone and build the deployment template
 
 ```bash
 git clone https://github.com/YAMRAJ13y/sentry-vault-aws.git
@@ -164,7 +164,7 @@ cd sentry-vault-aws
 python infra/build_and_deploy.py    # injects the Flask app into the EC2 userdata
 ```
 
-### Step 3 — Deploy the core stack (~10 minutes)
+### Step 3 - Deploy the core stack (~10 minutes)
 
 ```bash
 aws cloudformation deploy \
@@ -174,7 +174,7 @@ aws cloudformation deploy \
   --capabilities CAPABILITY_NAMED_IAM
 ```
 
-**Optional — phone-side tamper alerts from the app itself** (requires a Telegram bot token, see Step 5):
+**Optional - phone-side tamper alerts from the app itself** (requires a Telegram bot token, see Step 5):
 
 ```bash
 aws cloudformation deploy \
@@ -187,7 +187,7 @@ aws cloudformation deploy \
 
 This creates **~26 resources**: VPC + 2 subnets, EC2 + Flask app, S3 vault bucket (Versioning + Object Lock), KMS key, least-privilege IAM role, ALB, WAF (managed SQLi/XSS rules), CloudTrail bucket, Config role, SSM. The **WebsiteURL** appears in the stack Outputs.
 
-### Step 4 — One-shot post-deployment
+### Step 4 - One-shot post-deployment
 
 ```bash
 bash infra/post_deploy.sh your-email@example.com
@@ -207,7 +207,7 @@ That builds the serverless Lambda function, the secured webhook (secret-token ve
 
 > ℹ️ The script auto-detects your account ID and region, is idempotent, and skips sections gracefully if a service is restricted on your account plan.
 
-### Step 5 — Verify the deployment
+### Step 5 - Verify the deployment
 
 1. Open `WebsiteURL` from the stack Outputs → the dashboard loads
 2. Upload a file → green banner; the S3 object shows `SSE-KMS` + Object Lock
@@ -216,10 +216,10 @@ That builds the serverless Lambda function, the secured webhook (secret-token ve
 5. Telegram `/status` → the bot lists every active security layer
 6. CloudTrail Event history → filter Event source `kms.amazonaws.com` → your `GenerateDataKey` event
 
-### Step 6 — Teardown when finished (important — ALB/WAF bill hourly)
+### Step 6 - Teardown when finished (important - ALB/WAF bill hourly)
 
 ```bash
-# 1. empty the vault bucket (Object Lock holds versions for 1 day — bypass as admin)
+# 1. empty the vault bucket (Object Lock holds versions for 1 day - bypass as admin)
 # 2. then delete the stack and standalone resources:
 aws cloudformation delete-stack --stack-name sentry-vault
 aws cloudtrail delete-trail --name sentry-trail
@@ -236,13 +236,13 @@ aws lambda delete-function --function-name sentry-telegram-bot
 |---|---|---|
 | 1 | Open the website | Dark security dashboard, 9 glowing layer badges |
 | 2 | Upload a file | Green banner: *encrypted with KMS and stored securely* |
-| 3 | Click **Delete** | 🔴 **DELETE BLOCKED** — AWS refuses; evidence intact |
+| 3 | Click **Delete** | 🔴 **DELETE BLOCKED** - AWS refuses; evidence intact |
 | 4 | SQLi payload in URL | ⚡ **403 Forbidden** in <50 ms |
 | 5 | Open CloudTrail | Every action recorded with identity + timestamp |
 | 6 | Open Config | Rule status: **COMPLIANT** |
 | 7 | Telegram `/status` | Bot lists all active security layers |
 
-**Raw forensics:** the vault itself contains `AUDIT_LOG_EXTRACT.txt` — a human-readable extract of the raw CloudTrail log showing every upload and tamper attempt, timestamped and attributed to the exact IAM role.
+**Raw forensics:** the vault itself contains `AUDIT_LOG_EXTRACT.txt` - a human-readable extract of the raw CloudTrail log showing every upload and tamper attempt, timestamped and attributed to the exact IAM role.
 
 ---
 
@@ -273,11 +273,11 @@ sentry-vault/
 
 ## 🔐 Security Design Notes
 
-- **Governance vs Compliance lock:** this project uses **GOVERNANCE** mode (1-day retention) so cleanup stays possible. For real legal evidence, switch to **COMPLIANCE** mode — then *no one*, including the AWS root account, can delete until retention expires.
+- **Governance vs Compliance lock:** this project uses **GOVERNANCE** mode (1-day retention) so cleanup stays possible. For real legal evidence, switch to **COMPLIANCE** mode - then *no one*, including the AWS root account, can delete until retention expires.
 - **Two independent alert paths:** the app alerts on events, AND the S3 storage layer triggers Lambda directly. Compromising the application cannot silence the vault.
-- **Webhook security:** the Telegram webhook is protected with a secret-token header — only Telegram can invoke the Lambda.
+- **Webhook security:** the Telegram webhook is protected with a secret-token header - only Telegram can invoke the Lambda.
 - **No secrets in code:** the app and bot read credentials from IAM roles / environment variables. Nothing is hardcoded.
-- **Known tuning decision:** WAF's `SizeRestrictions_BODY` managed rule (blocks bodies >8 KB) is set to Count mode so legitimate evidence files pass — every other rule still blocks. Security controls must be tuned to the application.
+- **Known tuning decision:** WAF's `SizeRestrictions_BODY` managed rule (blocks bodies >8 KB) is set to Count mode so legitimate evidence files pass - every other rule still blocks. Security controls must be tuned to the application.
 
 ## 🔮 Future Scope
 
@@ -294,4 +294,4 @@ Issues and pull requests are welcome. For significant changes, open an issue fir
 
 ## 📜 License
 
-[MIT](LICENSE) — built as a Cloud Security & Forensics academic project by [Dhruv Kachhadiya](https://github.com/YAMRAJ13y).
+[MIT](LICENSE) - built as a Cloud Security & Forensics academic project by [Sumit Solanki](https://github.com/YAMRAJ13y).
